@@ -1,0 +1,22 @@
+name: Vynex NpmProtect Auto-Hunter
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Roda sozinho a cada 30 minutos
+  workflow_dispatch:      # Permite que você dê "Play" manualmente
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install Libs
+        run: pip install httpx openai supabase python-dotenv
+      - name: Run
+        env:
+          VT_API_KEY1: ${{ secrets.VT_API_KEY1 }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }}
+        run: python main.py
