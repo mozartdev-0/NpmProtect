@@ -175,8 +175,10 @@ pip install -r requirements.txt
 ```env
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_SERVICE_ROLE=eyJ...
+DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
 OPENROUTER_API_KEY=sk-or-...
 VT_API_KEY1=sua_chave_vt_1
+
 VT_API_KEY2=sua_chave_vt_2        # opcional — dobra o rate limit
 MALWARE_BAZAAR_KEY=sua_chave
 BATCH_SIZE=5                      # malwares por sessão (padrão: 5)
@@ -227,7 +229,7 @@ python servidor/hunter.py
 2. Vá em **Keys → Create Key**
 3. Cole como `OPENROUTER_API_KEY` (`sk-or-...`)
 
-> Modelo usado: `meta-llama/llama-3-70b-instruct`. Tem créditos gratuitos ao criar conta.
+> Modelo usado: `google/gemini-2.0-flash-lite-001`. Tem créditos gratuitos ao criar conta.
 
 </details>
 
