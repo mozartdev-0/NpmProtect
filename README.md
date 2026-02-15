@@ -1,292 +1,315 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/-%F0%9F%9B%A1%EF%B8%8F%20NpmProtect%20Intel-ff1a1a?style=for-the-badge" />
+<img src="https://raw.githubusercontent.com/mozartdev-0/NpmProtect/main/assets/logo.png" width="120" alt="NpmProtect Logo" />
 
-<h1>NpmProtect</h1>
+# 🛡️ NpmProtect
 
-<p><strong>We don't like malware. So we fight it — automatically.</strong></p>
-<p><em>Indie open-source threat intelligence for the npm ecosystem.</em></p>
+**Threat Intelligence Engine para o ecossistema npm**
 
-<br/>
+[![PyPI version](https://img.shields.io/pypi/v/npmprotect?color=red&style=flat-square)](https://pypi.org/project/npmprotect/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-red?style=flat-square)](https://python.org)
+[![License](https://img.shields.io/badge/license-MIT-red?style=flat-square)](LICENSE)
+[![Dashboard](https://img.shields.io/badge/dashboard-live-red?style=flat-square)](https://npmprotect.vercel.app)
 
-[![Dashboard](https://img.shields.io/badge/🌐_Dashboard-Live-00ff88?style=for-the-badge&logoColor=black)](https://npmprotect.vercel.app)
-[![PyPI](https://img.shields.io/badge/🐍_PyPI-npmprotect-3775A9?style=for-the-badge)](https://pypi.org/project/npmprotect)
-[![npm](https://img.shields.io/badge/📦_npm-@mozartdev0/npmprotect-cc3534?style=for-the-badge)](https://www.npmjs.com/package/@mozartdev0/npmprotect)
-[![GitHub](https://img.shields.io/badge/⭐_GitHub-NpmProtect-181717?style=for-the-badge&logo=github)](https://github.com/mozartdev-0/NpmProtect)
-[![License](https://img.shields.io/badge/📄_License-MIT-red?style=for-the-badge)](LICENSE)
+*Detecta, analisa e cataloga malware no ecossistema npm em tempo real.*
 
-<br/>
-
-```
-  ███╗   ██╗██████╗ ███╗   ███╗██████╗ ██████╗  ██████╗ ████████╗███████╗ ██████╗████████╗
-  ████╗  ██║██╔══██╗████╗ ████║██╔══██╗██╔══██╗██╔═══██╗╚══██╔══╝██╔════╝██╔════╝╚══██╔══╝
-  ██╔██╗ ██║██████╔╝██╔████╔██║██████╔╝██████╔╝██║   ██║   ██║   █████╗  ██║        ██║   
-  ██║╚██╗██║██╔═══╝ ██║╚██╔╝██║██╔═══╝ ██╔══██╗██║   ██║   ██║   ██╔══╝  ██║        ██║   
-  ██║ ╚████║██║     ██║ ╚═╝ ██║██║     ██║  ██║╚██████╔╝   ██║   ███████╗╚██████╗   ██║   
-  ╚═╝  ╚═══╝╚═╝     ╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝    ╚═╝   ╚══════╝ ╚═════╝   ╚═╝   
-```
+[Dashboard](https://npmprotect.vercel.app) · [PyPI](https://pypi.org/project/npmprotect/) · [Reportar Bug](https://github.com/mozartdev-0/NpmProtect/issues)
 
 </div>
 
 ---
 
-## 🔍 O que é?
+## 📋 Sobre
 
-NpmProtect é um sistema **automatizado de inteligência contra malware** no ecossistema npm. O pipeline coleta hashes de amostras ativas, cruza com múltiplas fontes de threat intel, gera relatórios técnicos com IA e publica tudo em tempo real — **de graça, sem conta, sem paywall.**
+O **NpmProtect** é um sistema completo de Threat Intelligence focado no ecossistema npm. Ele monitora feeds de malware em tempo real, gera relatórios técnicos profissionais com IA, publica análises no VirusTotal e notifica via Discord.
 
-> Feito por um dev de 10 anos. Sério. 🔥
-
----
-
-## ⚙️ Stack
-
-<div align="center">
-
-| Camada | Tecnologia |
-|--------|-----------|
-| 🧠 **IA / Relatórios** | ![OpenRouter](https://img.shields.io/badge/OpenRouter-Llama_3_70B-7c3aed?style=flat-square) |
-| 🦠 **Feed de Malwares** | ![MalwareBazaar](https://img.shields.io/badge/MalwareBazaar-abuse.ch-ea580c?style=flat-square) |
-| 🔬 **Análise Multi-engine** | ![VirusTotal](https://img.shields.io/badge/VirusTotal-Dual_Key-4285F4?style=flat-square&logo=virustotal&logoColor=white) |
-| ☁️ **Banco de Dados** | ![Supabase](https://img.shields.io/badge/Supabase-Realtime-3ECF8E?style=flat-square&logo=supabase&logoColor=white) |
-| 🌐 **Dashboard** | ![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=flat-square&logo=vercel&logoColor=white) |
-| 🐍 **Backend / Hunter** | ![Python](https://img.shields.io/badge/Python-asyncio-3776AB?style=flat-square&logo=python&logoColor=white) |
-| 📦 **CLI Python** | ![PyPI](https://img.shields.io/badge/PyPI-npmprotect-3775A9?style=flat-square&logo=pypi&logoColor=white) |
-| 🟨 **SDK JavaScript** | ![npm](https://img.shields.io/badge/npm-@mozartdev0/npmprotect-cc3534?style=flat-square&logo=npm&logoColor=white) |
-
-</div>
+**Componentes:**
+- 🖥️ **Dashboard Web** — Interface pública em tempo real com busca e filtros
+- 🤖 **Hunter** — Engine que monitora feeds, analisa com IA e cataloga malware automaticamente
+- 💻 **CLI (`np`)** — Ferramenta de linha de comando para verificar pacotes e consultar a base
 
 ---
 
-## 🔄 Pipeline de Análise
-
-```
-  ┌─────────────────┐
-  │  MalwareBazaar  │  ← Feed de hashes SHA-256 ativos
-  └────────┬────────┘
-           │
-           ▼
-  ┌─────────────────┐
-  │   VirusTotal    │  ← Confirma existência (dual-key engine)
-  └────────┬────────┘
-           │
-           ▼
-  ┌─────────────────────────────────┐
-  │  Llama 3 70B via OpenRouter     │  ← Gera relatório técnico
-  │  MITRE ATT&CK · IOCs · Static  │
-  └────────┬────────────────────────┘
-           │
-           ▼
-  ┌─────────────────┐
-  │   VirusTotal    │  ← Publica relatório como comentário público
-  └────────┬────────┘
-           │
-           ▼
-  ┌─────────────────┐
-  │    Supabase     │  ← Sincroniza em tempo real
-  └────────┬────────┘
-           │
-           ▼
-  ┌──────────────────────────┐
-  │  npmprotect.vercel.app   │  ← Dashboard público, sem login
-  └──────────────────────────┘
-```
-
----
-
-## 🐍 CLI Python
+## 🚀 Instalação da CLI
 
 ```bash
 pip install npmprotect
 ```
 
-### Comandos
-
 ```bash
-npmprotect check <pacote>          # 🔍 Verifica se um pacote npm é seguro
-npmprotect check <pacote> --vt     # 🔬 Verifica + análise VirusTotal
-npmprotect latest --limit 10       # 🦠 Últimos malwares detectados
-npmprotect report <hash>           # 📄 Relatório completo por SHA-256
-npmprotect stats                   # 📊 Estatísticas da base
-```
-
-### Exemplos reais
-
-```bash
-$ npmprotect check lodahs
-  ⚠️  Nome similar a pacotes populares: lodash
-  ⚠️  28 downloads/semana — pacote pouco conhecido!
-
-$ npmprotect check expresss --vt
-  ⚠️  Typosquat de: express
-  ⚠️  Descrição: "temp test" — suspeito!
-
-$ npmprotect check express --vt
-  ✅ express — 69,722,421 downloads/semana
-  ✅ VirusTotal: 0/97 engines — limpo.
+np --help
 ```
 
 ---
 
-## 🟨 SDK JavaScript
+## ⚙️ Configuração
 
-```bash
-npm install @mozartdev0/npmprotect
+Crie um arquivo `.env` no seu diretório home (`~/.env`) ou na raiz do projeto:
+
+```env
+# ─── Supabase ───────────────────────────────
+SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_KEY=sua_anon_key_publica
+SUPABASE_SERVICE_ROLE=sua_service_role_key
+
+# ─── VirusTotal ─────────────────────────────
+VT_API_KEY1=sua_chave_vt
+
+# ─── OpenRouter (IA) ────────────────────────
+OPENROUTER_API_KEY=sk-or-...
+
+# ─── Discord (opcional) ─────────────────────
+DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
 ```
 
-Integre threat intelligence do NpmProtect no seu site ou app — **sem config, sem API key, zero dependências.**
+> **Nota:** A CLI procura o `.env` automaticamente em `~/`, `~/.npmprotect/`, `~/NpmProtect/` e no diretório atual.
 
-```javascript
-const { NpmProtect } = require('@mozartdev0/npmprotect')
+---
 
-const np = new NpmProtect()
+## 💻 Comandos CLI
 
-// Últimos malwares detectados
-const latest = await np.latest(10)
+### `np check <pacote>`
+Verifica se um pacote npm é seguro.
 
-// Verificar pacote
-const results = await np.check('lodash')
+```bash
+np check lodash
+np check expresss          # detecta typosquatting
+np check axios --vt        # inclui análise do VirusTotal
+```
 
-// Relatório completo
-const report = await np.report('abc123...')
+**Output:**
+```
+  ╔══════════════════════════════════════╗
+  ║  🛡️  NpmProtect  ·  Vynex Labs        ║
+  ╚══════════════════════════════════════╝
 
-// Estatísticas
-const stats = await np.stats()
-// { total: 42, lastDetection: '2026-02-14T...', dashboard: 'https://npmprotect.vercel.app' }
-
-// Info do pacote no npm
-const info = await np.npmInfo('express')
-// { exists: true, version: '5.2.1', downloads: 69722421, ... }
+  PACOTE        lodash
+  VERSÃO        4.17.21
+  AUTOR         jdalton
+  DOWNLOADS     25,847,392 / semana
+  BASE          Nenhuma ameaça registrada. ✔
 ```
 
 ---
 
-## 🚀 Rodando o Hunter localmente
+### `np report <sha256>`
+Busca o relatório completo de um hash SHA-256.
 
-### 1. Clone
+```bash
+np report 25411e3f056d4be6cee0033da6208f661c9566c50022d5be81dbcab13fe5c240
+```
+
+---
+
+### `np latest`
+Lista os últimos malwares detectados.
+
+```bash
+np latest
+np latest --limit 20
+```
+
+**Output:**
+```
+  01. 25411e3f056d4be6...  [85/100 CRITICAL]  15/02/2026 13:19
+  02. 4eeeb2ebc9d6cb31...  [75/100 HIGH]      15/02/2026 13:22
+  03. 8ec809c41cba7fc6...  [10/100 LOW]       15/02/2026 13:30
+```
+
+---
+
+### `np stats`
+Estatísticas gerais da base de inteligência.
+
+```bash
+np stats
+```
+
+```
+  Total         347
+  Críticos      89
+  Última        15/02/2026 13:30
+  Dashboard     https://npmprotect.vercel.app
+```
+
+---
+
+### `np analisar`
+Valida as chaves do `.env` e inicia o hunter automaticamente.
+
+```bash
+np analisar           # valida e inicia
+np analisar --force   # inicia mesmo com chaves inválidas
+```
+
+```
+  VALIDANDO CHAVES
+
+  › Verificando Supabase...
+  ✔ Supabase SERVICE_ROLE    ✔
+  › Verificando VirusTotal...
+  ✔ VT_API_KEY1              ✔
+  › Verificando OpenRouter...
+  ✔ OPENROUTER_API_KEY       ✔
+  ✔ DISCORD_WEBHOOK          ✔
+
+  ✔ Ambiente validado! Iniciando hunter...
+```
+
+> O hunter é baixado automaticamente do GitHub se não encontrado localmente.
+
+---
+
+## 🤖 Hunter
+
+O hunter é o coração do NpmProtect. Ele roda em loop contínuo:
+
+1. Busca hashes de malware do **MalwareBazaar**
+2. Verifica duplicatas no banco de dados
+3. Confirma existência no **VirusTotal** e coleta metadados
+4. Gera **relatório técnico profissional** com IA (Gemini Flash Lite)
+5. Calcula **score de severidade** (0–100)
+6. Publica comentário no **VirusTotal**
+7. Salva no **Supabase** com Realtime
+8. Notifica no **Discord** com embed colorido
+9. Aguarda 45 segundos e repete
+
+### Formato do Relatório
+
+```markdown
+# 🛡️ MALWARE ANALYSIS REPORT: NpmProtect Security Engine
+
+Date: February 15, 2026
+Analyst: Mozart_Dev (Analyst ID: 4821)
+Security Level: Critical 🔴
+
+## 1. Executive Summary
+## 2. File Metadata      ← tabela com dados reais do VT
+## 3. Detection Metrics  ← X / Y engines
+## 4. Behavioral Analysis
+## 5. MITRE ATT&CK Matrix
+## 6. IOCs
+## 7. Final Verdict & Recommendation
+```
+
+### Score de Severidade
+
+| Score | Nível | Cor |
+|-------|-------|-----|
+| 0–39 | LOW | 🟢 |
+| 40–59 | MEDIUM | 🟡 |
+| 60–79 | HIGH | 🟠 |
+| 80–100 | CRITICAL | 🔴 |
+
+---
+
+## 🌐 Dashboard
+
+Acesse **[npmprotect.vercel.app](https://npmprotect.vercel.app)** para:
+
+- Ver todos os malwares catalogados em tempo real
+- Buscar por hash SHA-256
+- Ler relatórios técnicos completos
+- Filtrar por severidade
+- Visualizar estatísticas globais
+
+---
+
+## 🔔 Notificações Discord
+
+Configure o webhook e receba alertas assim:
+
+```
+🔴 Novo Malware Detectado — Severidade CRITICAL
+🔑 SHA-256   25411e3f...
+📊 Score     85/100 — CRITICAL
+🆔 Report    ID #4821
+📄 Preview   # 🛡️ MALWARE ANALYSIS REPORT...
+
+🔍 Acesse npmprotect.vercel.app e pesquise por:
+   25411e3f056d4be6cee0033da6208f661c9566c50022d5be81dbcab13fe5c240
+```
+
+---
+
+## 🗄️ Banco de Dados
+
+Schema da tabela `reports` no Supabase:
+
+```sql
+CREATE TABLE reports (
+  id         SERIAL PRIMARY KEY,
+  hash       TEXT UNIQUE NOT NULL,
+  report_id  INTEGER,
+  analyst    TEXT DEFAULT 'Mozart_Dev',
+  content    TEXT,
+  score      INTEGER DEFAULT 50,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Adicionar coluna score se já existir a tabela:
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 50;
+```
+
+---
+
+## 🔗 Integrações
+
+| Serviço | Uso |
+|---------|-----|
+| [MalwareBazaar](https://bazaar.abuse.ch) | Feed de hashes de malware |
+| [VirusTotal](https://virustotal.com) | Metadados e publicação de análises |
+| [OpenRouter](https://openrouter.ai) | IA para geração de relatórios (Gemini Flash Lite) |
+| [Supabase](https://supabase.com) | Banco de dados com Realtime |
+| [Discord](https://discord.com) | Notificações via Webhook |
+| [Vercel](https://vercel.com) | Hospedagem do dashboard |
+
+---
+
+## 🛠️ Desenvolvimento
 
 ```bash
 git clone https://github.com/mozartdev-0/NpmProtect
 cd NpmProtect
+
+# Instalar dependências
 pip install -r requirements.txt
+
+# Configurar .env
+cp .env.example .env
+# editar .env com suas chaves
+
+# Rodar o hunter
+python hunter.py
+
+# Rodar a CLI localmente
+cd cli
+pip install -e .
+np --help
 ```
 
-### 2. Configure o `.env`
+---
 
-```env
-SUPABASE_URL=https://xxxx.supabase.co
-SUPABASE_SERVICE_ROLE=eyJ...
-DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
-OPENROUTER_API_KEY=sk-or-...
-VT_API_KEY1=sua_chave_vt_1
-
-VT_API_KEY2=sua_chave_vt_2        # opcional — dobra o rate limit
-MALWARE_BAZAAR_KEY=sua_chave
-BATCH_SIZE=5                      # malwares por sessão (padrão: 5)
-COOLDOWN_SECONDS=45               # espera entre análises (padrão: 45)
-```
-
-### 3. Rode
+## 📦 Publicar nova versão da CLI
 
 ```bash
-python servidor/hunter.py
+cd cli
+# Atualizar versão no setup.py
+rm -rf dist/
+python -m build
+twine upload dist/*
 ```
-
----
-
-## 🔑 Como obter as chaves de API
-
-<details>
-<summary><b>🟢 Supabase — SUPABASE_URL e SUPABASE_SERVICE_ROLE</b></summary>
-
-1. Acesse [supabase.com](https://supabase.com) e crie uma conta gratuita
-2. Crie um novo projeto
-3. Vá em **Project Settings → API**
-4. Copie:
-   - **Project URL** → `SUPABASE_URL`
-   - **service_role (secret)** → `SUPABASE_SERVICE_ROLE` ⚠️ *nunca exponha publicamente*
-   - **anon public** → use no CLI como `SUPABASE_KEY` — segura pra expor
-
-> A tabela `reports` precisa existir com as colunas: `hash`, `report_id`, `content`, `analyst`, `created_at`
-
-</details>
-
-<details>
-<summary><b>🔵 VirusTotal — VT_API_KEY1 / VT_API_KEY2</b></summary>
-
-1. Acesse [virustotal.com](https://www.virustotal.com) e crie uma conta gratuita
-2. Clique no seu avatar → **API Key**
-3. Cole como `VT_API_KEY1`
-4. Crie uma segunda conta para `VT_API_KEY2` e dobrar o rate limit
-
-> Plano gratuito: **4 requests/minuto**. Com 2 chaves o hunter alterna automaticamente.
-
-</details>
-
-<details>
-<summary><b>🟣 OpenRouter — OPENROUTER_API_KEY</b></summary>
-
-1. Acesse [openrouter.ai](https://openrouter.ai) e crie uma conta
-2. Vá em **Keys → Create Key**
-3. Cole como `OPENROUTER_API_KEY` (`sk-or-...`)
-
-> Modelo usado: `google/gemini-2.0-flash-lite-001`. Tem créditos gratuitos ao criar conta.
-
-</details>
-
-<details>
-<summary><b>🟠 MalwareBazaar — MALWARE_BAZAAR_KEY</b></summary>
-
-1. Acesse [bazaar.abuse.ch](https://bazaar.abuse.ch) e crie uma conta
-2. Vá em **Account → API Key**
-3. Cole como `MALWARE_BAZAAR_KEY`
-
-> Totalmente gratuito. Sem limites agressivos.
-
-</details>
-
----
-
-## 📊 Dashboard ao vivo
-
-**[npmprotect.vercel.app](https://npmprotect.vercel.app)**
-
-- 🔴 Hashes SHA-256 detectados em tempo real
-- 📄 Relatórios com MITRE ATT&CK, análise estática e dinâmica
-- 🔍 Busca por hash ou conteúdo
-- ⚡ Feed ao vivo via Supabase Realtime
-- 🌍 Público — sem login, sem conta
-
----
-
-## 🗺️ Roadmap
-
-- [x] 🔄 Pipeline de análise automatizado
-- [x] 🌐 Dashboard público em tempo real
-- [x] 📝 Publicação de relatórios no VirusTotal
-- [x] 🐍 CLI Python global (`pip install npmprotect`)
-- [x] 🟨 SDK JavaScript (`npm install @mozartdev0/npmprotect`)
-- [x] 🔍 Verificação real de pacotes + typosquatting detection
-- [ ] 🛡️ Proteção ativa no `npm install`
-- [ ] 📈 Scoring de severidade por hash
-- [ ] 🔌 API pública REST
-- [ ] 📤 Upload de arquivos para análise manual
 
 ---
 
 ## 📄 Licença
 
-MIT — use, modifique, contribua.
+MIT © 2026 [Mozart_Dev](https://github.com/mozartdev-0) · Vynex Labs
 
 ---
 
 <div align="center">
 
-**Feito por [Mozart_Dev](https://github.com/mozartdev-0) · Vynex Labs**
-
-*Fighting malware, one hash at a time.* 🛡️
-
-<br/>
-
-[![Dashboard](https://img.shields.io/badge/🌐-npmprotect.vercel.app-ff1a1a?style=for-the-badge)](https://npmprotect.vercel.app)
+**[npmprotect.vercel.app](https://npmprotect.vercel.app)** · Feito com 🛡️ por Mozart_Dev
 
 </div>
