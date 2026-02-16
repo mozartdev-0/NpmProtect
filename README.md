@@ -54,7 +54,7 @@ SUPABASE_SERVICE_ROLE=sua_service_role_key
 
 # ─── VirusTotal ─────────────────────────────
 VT_API_KEY1=sua_chave_vt
-
+T_RIP_API_KEY=SUA API NO https://www.threat.rip/
 # ─── OpenRouter (IA) ────────────────────────
 OPENROUTER_API_KEY=sk-or-...
 
@@ -258,6 +258,7 @@ ALTER TABLE reports ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 50;
 | Serviço | Uso |
 |---------|-----|
 | [MalwareBazaar](https://bazaar.abuse.ch) | Feed de hashes de malware |
+| [threat.rip](https://www.threat.rip/) | Se o virustotal não estiver disponivel |
 | [VirusTotal](https://virustotal.com) | Metadados e publicação de análises |
 | [OpenRouter](https://openrouter.ai) | IA para geração de relatórios (Gemini Flash Lite) |
 | [Supabase](https://supabase.com) | Banco de dados com Realtime |
