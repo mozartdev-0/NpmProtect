@@ -88,23 +88,21 @@ class NpmProtectHunter:
         return []
 
     async def get_vt_data(self, file_hash: str) -> dict | None:
-        for attempt in range(2):
-            try:
-                async with httpx.AsyncClient(timeout=15.0) as c:
-                    r = await c.get(
-                        f"{self.BASE_VT}/files/{file_hash}",
-                        headers={"x-apikey": self.vt_key}
-                    )
-                    if r.status_code == 404:
-                        return None
-                    if r.status_code == 429:
-                        log.warn("Rate limit VT. Aguardando 60s...")
-                        self._rotate_key()
-                        await asyncio.sleep(60)
-                        continue
-                    if r.status_code != 200:
-                        log.warn(f"VT retornou {r.status_code} para {file_hash[:16]}")
-                        return None
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as c:
+                r = await c.get(
+                    f"{self.BASE_VT}/files/{file_hash}",
+                    headers={"x-apikey": self.vt_key}
+                )
+                if r.status_code == 404:
+                    return None
+                if r.status_code == 429:
+                    log.warn("Rate limit VT. Indo para threat.rip...")
+                    self._rotate_key()
+                    return None  # vai direto pro fallback
+                if r.status_code != 200:
+                    log.warn(f"VT retornou {r.status_code} para {file_hash[:16]}")
+                    return None
 
                     d = r.json().get("data", {}).get("attributes", {})
                     s = d.get("last_analysis_stats", {})
@@ -128,11 +126,9 @@ class NpmProtectHunter:
                         "popular_threat":   d.get("popular_threat_classification", {}).get("suggested_threat_label", ""),
                         "sandbox_verdicts": list(d.get("sandbox_verdicts", {}).keys())[:5],
                     }
-            except Exception as e:
-                log.error("Erro ao buscar dados VT", str(e))
-                if attempt == 0:
-                    await asyncio.sleep(3)
-        return None
+        except Exception as e:
+            log.error("Erro ao buscar dados VT", str(e))
+            return None
 
     async def post_to_vt(self, file_hash: str, comment: str) -> bool:
         payload = {"data": {"type": "comment", "attributes": {
