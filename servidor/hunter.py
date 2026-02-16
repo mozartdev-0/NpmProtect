@@ -181,8 +181,22 @@ class NpmProtectHunter:
                 meta  = r2.json() if r2.status_code == 200 else {}
                 cls   = r3.json() if r3.status_code == 200 else {}
 
-                threat = cls.get("classification") or cls.get("label") or "Unknown"
-                tags   = cls.get("tags", []) or []
+                log.info(f"threat.rip meta: {str(meta)[:200]}")
+                log.info(f"threat.rip cls: {str(cls)[:200]}")
+
+                # Tenta vários campos possíveis
+                threat = (
+                    cls.get("classification") or
+                    cls.get("label") or
+                    cls.get("verdict") or
+                    cls.get("threat") or
+                    cls.get("category") or
+                    cls.get("type") or
+                    meta.get("classification") or
+                    meta.get("threat_label") or
+                    "Unknown"
+                )
+                tags = cls.get("tags", []) or meta.get("tags", []) or []
 
                 return {
                     "name":             meta.get("filename") or meta.get("name") or "Unknown",
