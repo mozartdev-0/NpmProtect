@@ -446,7 +446,15 @@ async def process_hash(hunter: NpmProtectHunter, h: str):
             return
         log.info(f"Dados obtidos via threat.rip")
 
-    if vt["malicious"] < MIN_DETECTIONS:
+    # Se veio do threat.rip, aceita qualquer classificação não-unknown
+    from_trip = vt.get("source") == "threat.rip"
+    if from_trip:
+        threat = vt.get("popular_threat", "").lower()
+        if not threat or threat in ("unknown", "clean", ""):
+            log.info(f"threat.rip: sem classificação. Pulando...")
+            return
+        log.info(f"threat.rip: classificado como '{vt['popular_threat']}'")
+    elif vt["malicious"] < MIN_DETECTIONS:
         log.info(f"Poucas detecções ({vt['malicious']}). Pulando...")
         return
 
