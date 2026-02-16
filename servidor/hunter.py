@@ -10,6 +10,13 @@ from supabase import create_client, Client
 
 load_dotenv()
 
+# ─── CONFIG ───────────────────────────────────────────────────────────────────
+
+AI_MODEL  = "google/gemini-2.0-flash-lite-001"
+COOLDOWN  = int(os.getenv("COOLDOWN_SECONDS", 45))
+MIN_DETECTIONS = int(os.getenv("MIN_DETECTIONS", 3))   # ignora hashes com menos de N detecções
+FEED_REFRESH   = int(os.getenv("FEED_REFRESH", 3600))  # recarrega feed a cada N segundos
+
 # ─── CLIENTES ─────────────────────────────────────────────────────────────────
 
 ai_client = AsyncOpenAI(
@@ -23,17 +30,17 @@ supabase: Client = create_client(
 )
 
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
-AI_MODEL        = "google/gemini-2.0-flash-lite-001"
-COOLDOWN        = int(os.getenv("COOLDOWN_SECONDS", 45))
 
 # ─── LOGGER ───────────────────────────────────────────────────────────────────
 
 class Log:
-    _fmt = lambda self, t: datetime.now().strftime("%H:%M:%S")
-    def info(self, m):    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔵 [INFO]    {m}")
-    def success(self, m): print(f"[{datetime.now().strftime('%H:%M:%S')}] 🟢 [SUCCESS] {m}")
-    def warn(self, m):    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🟡 [WARN]    {m}")
-    def error(self, m, d=""): print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔴 [ERROR]   {m}" + (f" | {d}" if d else ""))
+    def _ts(self): return datetime.now().strftime("%H:%M:%S")
+    def info(self, m):        print(f"[{self._ts()}] 🔵 [INFO]    {m}")
+    def success(self, m):     print(f"[{self._ts()}] 🟢 [SUCCESS] {m}")
+    def warn(self, m):        print(f"[{self._ts()}] 🟡 [WARN]    {m}")
+    def error(self, m, d=""):
+        extra = f" | {d}" if d else ""
+        print(f"[{self._ts()}] 🔴 [ERROR]   {m}{extra}")
 
 log = Log()
 
@@ -53,53 +60,78 @@ class NpmProtectHunter:
     def __init__(self):
         self.vt_keys = [k for k in [os.getenv("VT_API_KEY1"), os.getenv("VT_API_KEY2")] if k]
         self._key_idx = 0
+        if not self.vt_keys:
+            raise RuntimeError("Nenhuma VT_API_KEY configurada!")
 
     @property
     def vt_key(self) -> str:
         return self.vt_keys[self._key_idx % len(self.vt_keys)]
 
+    def _rotate_key(self):
+        self._key_idx += 1
+        log.warn(f"Rotacionando chave VT → idx {self._key_idx % len(self.vt_keys)}")
+
     async def fetch_hashes(self) -> list[str]:
         log.info("Sincronizando feed MalwareBazaar...")
-        try:
-            async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as c:
-                r = await c.get("https://bazaar.abuse.ch/export/txt/sha256/recent/")
-                hashes = list(set(re.findall(r'\b([a-fA-F0-9]{64})\b', r.text)))
-                log.info(f"{len(hashes)} hashes únicos obtidos.")
-                return hashes
-        except Exception as e:
-            log.error("Falha ao obter feed", str(e))
-            return []
+        for attempt in range(3):
+            try:
+                async with httpx.AsyncClient(follow_redirects=True, timeout=20.0) as c:
+                    r = await c.get("https://bazaar.abuse.ch/export/txt/sha256/recent/")
+                    hashes = list(set(re.findall(r'\b([a-fA-F0-9]{64})\b', r.text)))
+                    random.shuffle(hashes)
+                    log.info(f"{len(hashes)} hashes únicos obtidos.")
+                    return hashes
+            except Exception as e:
+                log.error(f"Tentativa {attempt+1}/3 falhou", str(e))
+                await asyncio.sleep(5)
+        return []
 
     async def get_vt_data(self, file_hash: str) -> dict | None:
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as c:
-                r = await c.get(
-                    f"{self.BASE_VT}/files/{file_hash}",
-                    headers={"x-apikey": self.vt_key}
-                )
-                if r.status_code != 200:
-                    return None
-                d = r.json().get("data", {}).get("attributes", {})
-                s = d.get("last_analysis_stats", {})
-                return {
-                    "name":             d.get("meaningful_name") or (d.get("names") or [None])[0] or "Unknown",
-                    "type":             d.get("type_description", "Unknown"),
-                    "size":             d.get("size", 0),
-                    "malicious":        s.get("malicious", 0),
-                    "suspicious":       s.get("suspicious", 0),
-                    "harmless":         s.get("harmless", 0),
-                    "undetected":       s.get("undetected", 0),
-                    "tags":             d.get("tags", []),
-                    "magic":            d.get("magic", ""),
-                    "first_seen":       d.get("first_submission_date", ""),
-                    "times_submitted":  d.get("times_submitted", 0),
-                    "signature":        d.get("signature_info", {}).get("description", ""),
-                    "popular_threat":   d.get("popular_threat_classification", {}).get("suggested_threat_label", ""),
-                    "sandbox_verdicts": list(d.get("sandbox_verdicts", {}).keys())[:5],
-                }
-        except Exception as e:
-            log.error("Erro ao buscar dados VT", str(e))
-            return None
+        for attempt in range(2):
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as c:
+                    r = await c.get(
+                        f"{self.BASE_VT}/files/{file_hash}",
+                        headers={"x-apikey": self.vt_key}
+                    )
+                    if r.status_code == 404:
+                        return None
+                    if r.status_code == 429:
+                        log.warn("Rate limit VT. Aguardando 60s...")
+                        self._rotate_key()
+                        await asyncio.sleep(60)
+                        continue
+                    if r.status_code != 200:
+                        log.warn(f"VT retornou {r.status_code} para {file_hash[:16]}")
+                        return None
+
+                    d = r.json().get("data", {}).get("attributes", {})
+                    s = d.get("last_analysis_stats", {})
+
+                    names = d.get("names") or []
+                    name  = d.get("meaningful_name") or (names[0] if names else "Unknown")
+
+                    return {
+                        "name":             name,
+                        "type":             d.get("type_description", "Unknown"),
+                        "size":             d.get("size", 0),
+                        "malicious":        s.get("malicious", 0),
+                        "suspicious":       s.get("suspicious", 0),
+                        "harmless":         s.get("harmless", 0),
+                        "undetected":       s.get("undetected", 0),
+                        "tags":             d.get("tags", []),
+                        "magic":            d.get("magic", ""),
+                        "first_seen":       d.get("first_submission_date", ""),
+                        "times_submitted":  d.get("times_submitted", 0),
+                        "signature":        d.get("signature_info", {}).get("description", ""),
+                        "popular_threat":   d.get("popular_threat_classification", {}).get("suggested_threat_label", ""),
+                        "sandbox_verdicts": list(d.get("sandbox_verdicts", {}).keys())[:5],
+                    }
+            except Exception as e:
+                log.error("Erro ao buscar dados VT", str(e))
+                if attempt == 0:
+                    await asyncio.sleep(3)
+        return None
 
     async def post_to_vt(self, file_hash: str, comment: str) -> bool:
         payload = {"data": {"type": "comment", "attributes": {
@@ -115,7 +147,10 @@ class NpmProtectHunter:
                 if r.status_code == 200:
                     log.success("Publicado no VirusTotal!")
                     return True
-                log.warn(f"VT retornou {r.status_code}: {r.text[:120]}")
+                if r.status_code == 429:
+                    log.warn("Rate limit VT (comments). Pulando post.")
+                    return False
+                log.warn(f"VT comment retornou {r.status_code}: {r.text[:120]}")
                 return False
         except Exception as e:
             log.error("Erro no POST VT", str(e))
@@ -124,13 +159,13 @@ class NpmProtectHunter:
 # ─── IA ───────────────────────────────────────────────────────────────────────
 
 async def generate_report(h: str, report_id: int, vt: dict) -> str:
-    total    = vt["malicious"] + vt["suspicious"] + vt["harmless"] + vt["undetected"]
-    size_mb  = round(vt["size"] / 1024 / 1024, 2) if vt["size"] else 0
-    threat   = vt["popular_threat"] or vt["type"] or "Unknown"
-    tags     = ", ".join(vt["tags"][:6]) if vt["tags"] else "none"
-    boxes    = ", ".join(vt["sandbox_verdicts"]) if vt["sandbox_verdicts"] else "none"
-    sig      = vt["signature"] or "UNSIGNED"
-    seen     = vt["first_seen"] or "Unknown"
+    total   = vt["malicious"] + vt["suspicious"] + vt["harmless"] + vt["undetected"]
+    size_mb = round(vt["size"] / 1024 / 1024, 2) if vt["size"] else 0
+    threat  = vt["popular_threat"] or vt["type"] or "Unknown"
+    tags    = ", ".join(vt["tags"][:6]) if vt["tags"] else "none"
+    boxes   = ", ".join(vt["sandbox_verdicts"]) if vt["sandbox_verdicts"] else "none"
+    sig     = vt["signature"] or "UNSIGNED"
+    seen    = vt["first_seen"] or "Unknown"
 
     prompt = f"""You are a senior malware analyst at NpmProtect Security Labs. Generate a professional structured malware analysis report in Markdown using EXACTLY this format:
 
@@ -145,7 +180,7 @@ async def generate_report(h: str, report_id: int, vt: dict) -> str:
 ---
 
 ## 1. Executive Summary
-[2-3 sentences describing what this malware is, behavior, and threat level. Be specific.]
+[2-3 sentences: what this malware is, its behavior, and threat level. Be specific based on provided data.]
 
 ---
 
@@ -173,7 +208,7 @@ NpmProtect cross-referenced this sample with {total} global security databases.
 
 | Engine | Verdict |
 |---|---|
-[List 5 realistic AV engine names and verdicts consistent with the detection count]
+[List 5 realistic AV engine names and verdicts consistent with the threat type]
 
 ---
 
@@ -200,7 +235,7 @@ NpmProtect cross-referenced this sample with {total} global security databases.
 
 ## 6. IOCs
 
-[Hashes, IPs, domains, registry keys, file paths]
+[Hashes, IPs, domains, registry keys, file paths relevant to this threat]
 
 ---
 
@@ -208,7 +243,7 @@ NpmProtect cross-referenced this sample with {total} global security databases.
 
 **Verdict:** [MALICIOUS / SUSPICIOUS / CLEAN]
 
-[2-3 sentences with analyst recommendation.]
+[2-3 sentences with analyst recommendation and action taken.]
 
 ---
 
@@ -250,7 +285,10 @@ async def generate_score(analysis: str, vt: dict) -> int:
         raw = resp.choices[0].message.content.strip()
         return max(0, min(100, int(re.search(r'\d+', raw).group())))
     except:
-        return 50
+        # Fallback baseado nas detecções reais
+        total = vt["malicious"] + vt["suspicious"] + vt["harmless"] + vt["undetected"]
+        pct   = vt["malicious"] / total if total else 0
+        return min(95, int(pct * 100) + 10)
 
 # ─── VT COMMENT ───────────────────────────────────────────────────────────────
 
@@ -281,7 +319,7 @@ def build_vt_comment(h: str, report_id: int, score: int, vt: dict, analysis: str
         summary.strip()[:500],
         "",
         "🔗 Full Report: https://npmprotect.vercel.app",
-        "🔍 To view the complete analysis, visit https://npmprotect.vercel.app and search for:",
+        "🔍 Search for this hash at https://npmprotect.vercel.app:",
         h,
         "",
         "Analyst: Mozart_Dev | NpmProtect Security Engine © 2026",
@@ -298,9 +336,9 @@ async def notify_discord(h: str, report_id: int, score: int, analysis: str):
         "color":  color,
         "url":    "https://npmprotect.vercel.app",
         "fields": [
-            {"name": "🔑 SHA-256", "value": f"`{h}`",                          "inline": False},
-            {"name": "📊 Score",   "value": f"**{score}/100** — {label}",      "inline": True},
-            {"name": "🆔 Report",  "value": f"ID #{report_id}",                "inline": True},
+            {"name": "🔑 SHA-256", "value": f"`{h}`",                               "inline": False},
+            {"name": "📊 Score",   "value": f"**{score}/100** — {label}",           "inline": True},
+            {"name": "🆔 Report",  "value": f"ID #{report_id}",                     "inline": True},
             {"name": "📄 Preview", "value": analysis[:300].replace("`", "'") + "...", "inline": False},
         ],
         "footer":    {"text": "NpmProtect Intel · Vynex Labs"},
@@ -308,7 +346,10 @@ async def notify_discord(h: str, report_id: int, score: int, analysis: str):
     }
     try:
         async with httpx.AsyncClient(timeout=10.0) as c:
-            r = await c.post(DISCORD_WEBHOOK, json={"username": "NpmProtect Intel", "embeds": [embed]})
+            r = await c.post(
+                DISCORD_WEBHOOK,
+                json={"username": "NpmProtect Intel", "embeds": [embed]}
+            )
             if r.status_code in (200, 204):
                 log.success("Notificação enviada para o Discord!")
             else:
@@ -338,53 +379,75 @@ async def save_to_supabase(file_hash: str, report_id: int, content: str, score: 
     except Exception as e:
         log.error("Erro ao salvar no Supabase", str(e))
 
-# ─── MAIN ─────────────────────────────────────────────────────────────────────
+# ─── MAIN LOOP ────────────────────────────────────────────────────────────────
+
+async def process_hash(hunter: NpmProtectHunter, h: str):
+    if await already_in_db(h):
+        log.info(f"Já catalogado, pulando: {h[:16]}...")
+        return
+
+    log.info(f"Monitorando: {h}")
+
+    vt = await hunter.get_vt_data(h)
+    if not vt:
+        log.warn(f"Hash não indexado no VT. Pulando...")
+        return
+
+    if vt["malicious"] < MIN_DETECTIONS:
+        log.info(f"Poucas detecções ({vt['malicious']}). Pulando...")
+        return
+
+    log.success(f"Alvo confirmado | {vt['malicious']} engines | {vt['popular_threat'] or vt['type']}")
+
+    report_id = random.randint(1000, 9999)
+
+    analysis = await generate_report(h, report_id, vt)
+    log.success("Relatório gerado.")
+
+    score = await generate_score(analysis, vt)
+    emoji, label, _ = score_label(score)
+    log.info(f"Score: {score}/100 {emoji} {label}")
+
+    comment = build_vt_comment(h, report_id, score, vt, analysis)
+    await hunter.post_to_vt(h, comment)
+    await save_to_supabase(h, report_id, analysis, score)
+    await notify_discord(h, report_id, score, analysis)
+
+    log.info(f"Ciclo completo. Cooldown de {COOLDOWN}s...\n")
+    await asyncio.sleep(COOLDOWN)
+
 
 async def main():
     hunter = NpmProtectHunter()
-    log.info("NpmProtect v8.0 | Vynex Cloud Edition Online")
+    log.info("NpmProtect v9.0 | Vynex Cloud Edition Online")
+    log.info(f"Config: MIN_DETECTIONS={MIN_DETECTIONS} | COOLDOWN={COOLDOWN}s | FEED_REFRESH={FEED_REFRESH}s")
 
-    hashes = await hunter.fetch_hashes()
-    if not hashes:
-        return
+    feed_loaded_at = 0
+    hashes: list[str] = []
 
-    random.shuffle(hashes)
+    while True:
+        now = asyncio.get_event_loop().time()
 
-    for h in hashes:
-        if await already_in_db(h):
-            log.info(f"Já catalogado, pulando: {h[:16]}...")
-            continue
+        # Recarrega o feed quando esgotar ou expirar
+        if not hashes or (now - feed_loaded_at) >= FEED_REFRESH:
+            hashes = await hunter.fetch_hashes()
+            feed_loaded_at = asyncio.get_event_loop().time()
+            if not hashes:
+                log.warn("Feed vazio. Aguardando 60s...")
+                await asyncio.sleep(60)
+                continue
 
-        log.info(f"Monitorando: {h}")
-
-        vt = await hunter.get_vt_data(h)
-        if not vt:
-            log.warn("Hash não indexado no VT. Pulando...")
-            continue
-
-        log.success(f"Alvo confirmado | {vt['malicious']} engines maliciosas | {vt['popular_threat'] or vt['type']}")
-
-        report_id = random.randint(1000, 9999)
+        h = hashes.pop()
 
         try:
-            analysis = await generate_report(h, report_id, vt)
-            log.success("Relatório gerado.")
-
-            score = await generate_score(analysis, vt)
-            emoji, label, _ = score_label(score)
-            log.info(f"Score de severidade: {score}/100 {emoji} {label}")
-
-            comment = build_vt_comment(h, report_id, score, vt, analysis)
-            await hunter.post_to_vt(h, comment)
-            await save_to_supabase(h, report_id, analysis, score)
-            await notify_discord(h, report_id, score, analysis)
-
-            log.info(f"Ciclo completo. Cooldown de {COOLDOWN}s...\n")
-            await asyncio.sleep(COOLDOWN)
-
+            await process_hash(hunter, h)
         except Exception as e:
-            log.error("Falha no processamento", str(e))
+            log.error("Falha inesperada no processamento", str(e))
+            await asyncio.sleep(5)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n[NpmProtect] Hunter encerrado pelo usuário.")
