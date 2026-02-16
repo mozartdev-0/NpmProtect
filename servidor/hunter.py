@@ -16,6 +16,7 @@ AI_MODEL  = "google/gemini-2.0-flash-lite-001"
 COOLDOWN  = int(os.getenv("COOLDOWN_SECONDS", 45))
 MIN_DETECTIONS = int(os.getenv("MIN_DETECTIONS", 3))   # ignora hashes com menos de N detecções
 FEED_REFRESH   = int(os.getenv("FEED_REFRESH", 3600))  # recarrega feed a cada N segundos
+T_RIP_KEY      = os.getenv("T_RIP_API_KEY", "")
 
 # ─── CLIENTES ─────────────────────────────────────────────────────────────────
 
@@ -155,6 +156,58 @@ class NpmProtectHunter:
         except Exception as e:
             log.error("Erro no POST VT", str(e))
             return False
+
+    async def get_trip_data(self, file_hash: str) -> dict | None:
+        """Busca dados do threat.rip como fallback do VirusTotal."""
+        if not T_RIP_KEY:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as c:
+                # Verifica se existe
+                r = await c.get(
+                    f"https://www.threat.rip/api/reports/file/{file_hash}/exists",
+                    headers={"Authorization": T_RIP_KEY}
+                )
+                if r.status_code != 200:
+                    return None
+
+                # Busca metadata
+                r2 = await c.get(
+                    f"https://www.threat.rip/api/reports/file/{file_hash}/metadata",
+                    headers={"Authorization": T_RIP_KEY}
+                )
+                # Busca classificação
+                r3 = await c.get(
+                    f"https://www.threat.rip/api/reports/file/{file_hash}/classification",
+                    headers={"Authorization": T_RIP_KEY}
+                )
+
+                meta  = r2.json() if r2.status_code == 200 else {}
+                cls   = r3.json() if r3.status_code == 200 else {}
+
+                threat = cls.get("classification") or cls.get("label") or "Unknown"
+                tags   = cls.get("tags", []) or []
+
+                return {
+                    "name":             meta.get("filename") or meta.get("name") or "Unknown",
+                    "type":             meta.get("filetype") or meta.get("type") or "Unknown",
+                    "size":             meta.get("filesize") or meta.get("size") or 0,
+                    "malicious":        1 if threat and threat.lower() not in ("unknown", "clean") else 0,
+                    "suspicious":       0,
+                    "harmless":         0,
+                    "undetected":       0,
+                    "tags":             tags if isinstance(tags, list) else [],
+                    "magic":            meta.get("magic", ""),
+                    "first_seen":       meta.get("first_seen") or meta.get("created_at") or "",
+                    "times_submitted":  meta.get("times_submitted", 1),
+                    "signature":        "",
+                    "popular_threat":   threat,
+                    "sandbox_verdicts": [],
+                    "source":           "threat.rip",
+                }
+        except Exception as e:
+            log.error("Erro ao buscar dados threat.rip", str(e))
+            return None
 
 # ─── IA ───────────────────────────────────────────────────────────────────────
 
@@ -390,8 +443,12 @@ async def process_hash(hunter: NpmProtectHunter, h: str):
 
     vt = await hunter.get_vt_data(h)
     if not vt:
-        log.warn(f"Hash não indexado no VT. Pulando...")
-        return
+        log.warn(f"VT sem dados. Tentando threat.rip...")
+        vt = await hunter.get_trip_data(h)
+        if not vt:
+            log.warn(f"Hash não encontrado em nenhuma fonte. Pulando...")
+            return
+        log.info(f"Dados obtidos via threat.rip")
 
     if vt["malicious"] < MIN_DETECTIONS:
         log.info(f"Poucas detecções ({vt['malicious']}). Pulando...")
