@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vynex Labs | NpmProtect Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --vynex-red: #ff0000; --vynex-black: #0a0a0a; }
+        body { background: var(--vynex-black); color: #e0e0e0; font-family: 'JetBrains Mono', monospace; }
+        .cyber-border { border: 1px solid rgba(255, 0, 0, 0.2); }
+        .red-glow-text { text-shadow: 0 0 10px rgba(255, 0, 0, 0.5); }
+        .table-row:hover { background: rgba(255, 0, 0, 0.05); }
+        .modal-bg { background: rgba(10, 10, 10, 0.98); backdrop-filter: blur(10px); }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--vynex-red); }
+    </style>
+</head>
+<body class="p-4 lg:p-8">
+
+    <header class="flex justify-between items-center mb-8 border-b border-red-900/50 pb-6">
+        <div class="flex items-center gap-4">
+            <img src="npmprotect_red_black_3.png" alt="Logo" class="w-12 h-12">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tighter red-glow-text uppercase">NpmProtect <span class="text-red-600">Intel</span></h1>
+                <p class="text-[10px] text-gray-500 uppercase tracking-widest text-red-700 font-bold">Vynex Cyber Defense System</p>
+            </div>
+        </div>
+        <div class="text-right text-[10px] text-gray-500 font-bold uppercase hidden md:block">
+            Status: <span class="text-green-500">Live</span> | DB: Connected<br>
+            Analyst: Mozart_Dev
+        </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="cyber-border bg-[#0f0f0f] p-4 rounded-sm">
+            <div class="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Total Reports</div>
+            <div id="statTotal" class="text-2xl font-bold text-red-500">—</div>
+        </div>
+        <div class="cyber-border bg-[#0f0f0f] p-4 rounded-sm">
+            <div class="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Critical Threats</div>
+            <div id="statCritical" class="text-2xl font-bold text-red-600">—</div>
+        </div>
+        <div class="cyber-border bg-[#0f0f0f] p-4 rounded-sm">
+            <div class="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Last Analysis</div>
+            <div id="statLast" class="text-xs font-mono text-gray-400">—</div>
+        </div>
+        <div class="cyber-border bg-[#0f0f0f] p-4 rounded-sm">
+            <div class="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Avg Severity</div>
+            <div id="statAvg" class="text-2xl font-bold text-yellow-500">—</div>
+        </div>
+    </div>
+
+    <div class="cyber-border bg-[#0f0f0f] rounded-sm overflow-hidden shadow-2xl shadow-red-900/10">
+        <div class="p-4 border-b border-red-900/30 bg-black/40">
+            <input type="text" id="searchInput" placeholder="FILTRAR POR HASH OU ANALISTA..." class="bg-black/60 border border-red-900/30 p-3 text-xs w-full outline-none focus:border-red-600 transition text-red-500">
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-[11px]">
+                <thead class="bg-red-900/20 text-red-500">
+                    <tr>
+                        <th class="p-4 border-b border-red-900/30 font-black italic">TIMESTAMP</th>
+                        <th class="p-4 border-b border-red-900/30 font-black italic">SHA-256 IDENTIFIER</th>
+                        <th class="p-4 border-b border-red-900/30 font-black italic">SEVERITY</th>
+                        <th class="p-4 border-b border-red-900/30 font-black italic text-right">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody id="intelBody" class="divide-y divide-red-900/10"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="modal" class="fixed inset-0 hidden flex items-center justify-center p-4 z-50 modal-bg">
+        <div class="cyber-border w-full max-w-5xl max-h-[85vh] flex flex col bg-black shadow-2xl shadow-red-600/20">
+            <div class="p-3 border-b border-red-900/50 flex justify-between items-center bg-red-900/10">
+                <span id="modalHash" class="text-[10px] font-bold text-red-500 truncate mr-4"></span>
+                <button onclick="closeModal()" class="text-red-600 font-bold hover:text-white transition px-2 font-sans">[ ESC ]</button>
+            </div>
+            <div id="modalContent" class="p-6 overflow-y-auto text-sm leading-relaxed text-gray-300 whitespace-pre-wrap font-mono bg-[#050505]"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+    <script>
+        const _URL = "https://tubmjfcncwuvdojcackc.supabase.co";
+        const _KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1Ym1qZmNuY3d1dmRvamNhY2tjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzczOTg4MDIsImV4cCI6MjA1Mjk3NDgwMn0.Yf-qTcE2GcSNnKYWQOsj23Dm-t-Xeb6tWxJ-gxUhKDU";
+        let _client;
+
+        window.addEventListener('load', () => {
+            _client = supabase.createClient(_URL, _KEY);
+            loadData();
+            loadStats();
+            initRealtime();
+        });
+
+        async function loadData() {
+            const { data, error } = await _client.from('reports').select('*').order('created_at', { ascending: false }).limit(200);
+            if (data) {
+                document.getElementById('intelBody').innerHTML = '';
+                data.forEach(renderRow);
+            }
+        }
+
+        async function loadStats() {
+            const { data: all } = await _client.from('reports').select('score, created_at', { count: 'exact' });
+            if (!all) return;
+
+            const total = all.length;
+            const critical = all.filter(r => (r.score || 0) >= 80).length;
+            const last = all[0]?.created_at ? new Date(all[0].created_at).toLocaleString() : '—';
+            const avg = total ? Math.round(all.reduce((sum, r) => sum + (r.score || 0), 0) / total) : 0;
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statCritical').innerText = critical;
+            document.getElementById('statLast').innerText = last;
+            document.getElementById('statAvg').innerText = avg;
+        }
+
+        function renderRow(report) {
+            const body = document.getElementById('intelBody');
+            const row = document.createElement('tr');
+            row.className = "table-row border-b border-red-900/5";
+
+            const score = report.score || 0;
+            let badge = '';
+            if (score >= 80) badge = '<span class="bg-red-900/30 text-red-400 px-2 py-0.5 rounded text-[9px] font-bold">CRITICAL</span>';
+            else if (score >= 60) badge = '<span class="bg-orange-900/30 text-orange-400 px-2 py-0.5 rounded text-[9px] font-bold">HIGH</span>';
+            else if (score >= 40) badge = '<span class="bg-yellow-900/30 text-yellow-400 px-2 py-0.5 rounded text-[9px] font-bold">MEDIUM</span>';
+            else badge = '<span class="bg-green-900/30 text-green-400 px-2 py-0.5 rounded text-[9px] font-bold">LOW</span>';
+
+            row.innerHTML = `
+                <td class="p-4 text-gray-600 font-mono">${new Date(report.created_at).toLocaleString()}</td>
+                <td class="p-4 font-bold text-gray-300 break-all select-all hover:text-red-400 transition cursor-text">${report.hash}</td>
+                <td class="p-4">${badge}</td>
+                <td class="p-4 text-right">
+                    <button onclick='openModal(${JSON.stringify(report).replace(/'/g, "&apos;")})' class="bg-red-900/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 px-4 py-1 rounded-sm transition uppercase text-[10px] font-bold">Analisar</button>
+                </td>
+            `;
+            body.appendChild(row);
+        }
+
+        function openModal(report) {
+            document.getElementById('modalHash').innerText = `TARGET_HASH: ${report.hash}`;
+            document.getElementById('modalContent').innerText = report.content;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() { 
+            document.getElementById('modal').classList.add('hidden'); 
+        }
+
+        function initRealtime() {
+            _client.channel('main').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reports' }, payload => {
+                loadData();
+                loadStats();
+            }).subscribe();
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('#intelBody tr').forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
+            });
+        });
+    </script>
+</body>
+</html>
