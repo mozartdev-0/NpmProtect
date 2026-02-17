@@ -12,7 +12,7 @@ load_dotenv()
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 
-AI_MODEL  = "google/gemini-2.0-flash-exp:free"
+AI_MODEL  = "llama-3.1-8b-instant"
 COOLDOWN  = int(os.getenv("COOLDOWN_SECONDS", 45))
 MIN_DETECTIONS = int(os.getenv("MIN_DETECTIONS", 3))   # ignora hashes com menos de N detecções
 FEED_REFRESH   = int(os.getenv("FEED_REFRESH", 3600))  # recarrega feed a cada N segundos
