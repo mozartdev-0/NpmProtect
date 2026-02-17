@@ -12,7 +12,7 @@ load_dotenv()
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 
-AI_MODEL  = "google/gemini-2.0-flash-lite-001"
+AI_MODEL  = "google/gemini-2.0-flash-exp:free"
 COOLDOWN  = int(os.getenv("COOLDOWN_SECONDS", 45))
 MIN_DETECTIONS = int(os.getenv("MIN_DETECTIONS", 3))   # ignora hashes com menos de N detecções
 FEED_REFRESH   = int(os.getenv("FEED_REFRESH", 3600))  # recarrega feed a cada N segundos
@@ -21,8 +21,8 @@ T_RIP_KEY      = os.getenv("T_RIP_API_KEY", "")
 # ─── CLIENTES ─────────────────────────────────────────────────────────────────
 
 ai_client = AsyncOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
+    base_url="https://api.groq.com/openai/v1",
+    api_key=os.getenv("GROQ_API_KEY"),
 )
 
 supabase: Client = create_client(
