@@ -53,13 +53,22 @@ SUPABASE_KEY=sua_anon_key_publica
 SUPABASE_SERVICE_ROLE=sua_service_role_key
 
 # ─── VirusTotal ─────────────────────────────
-VT_API_KEY1=sua_chave_vt
-T_RIP_API_KEY=SUA API NO https://www.threat.rip/
-# ─── OpenRouter (IA) ────────────────────────
-OPENROUTER_API_KEY=sk-or-...
+VT_API_KEY1=sua_chave_vt_1
+VT_API_KEY2=sua_chave_vt_2  # opcional
+
+# ─── Groq AI ────────────────────────────────
+GROQ_API_KEY=gsk_...
+
+# ─── Threat.rip (fallback) ──────────────────
+T_RIP_API_KEY=sua_chave_threat_rip  # opcional
 
 # ─── Discord (opcional) ─────────────────────
 DISCORD_WEBHOOK=https://discord.com/api/webhooks/...
+
+# ─── Hunter Config ──────────────────────────
+MIN_DETECTIONS=3       # mínimo de detecções VT pra processar
+COOLDOWN_SECONDS=45    # intervalo entre análises
+FEED_REFRESH=3600      # recarrega feed a cada N segundos
 ```
 
 > **Nota:** A CLI procura o `.env` automaticamente em `~/`, `~/.npmprotect/`, `~/NpmProtect/` e no diretório atual.
@@ -134,45 +143,34 @@ np stats
 
 ---
 
-### `np analisar`
-Valida as chaves do `.env` e inicia o hunter automaticamente.
-
-```bash
-np analisar           # valida e inicia
-np analisar --force   # inicia mesmo com chaves inválidas
-```
-
-```
-  VALIDANDO CHAVES
-
-  › Verificando Supabase...
-  ✔ Supabase SERVICE_ROLE    ✔
-  › Verificando VirusTotal...
-  ✔ VT_API_KEY1              ✔
-  › Verificando OpenRouter...
-  ✔ OPENROUTER_API_KEY       ✔
-  ✔ DISCORD_WEBHOOK          ✔
-
-  ✔ Ambiente validado! Iniciando hunter...
-```
-
-> O hunter é baixado automaticamente do GitHub se não encontrado localmente.
-
----
-
 ## 🤖 Hunter
 
-O hunter é o coração do NpmProtect. Ele roda em loop contínuo:
+O hunter é o coração do NpmProtect. Ele roda em loop infinito 24/7:
 
 1. Busca hashes de malware do **MalwareBazaar**
 2. Verifica duplicatas no banco de dados
-3. Confirma existência no **VirusTotal** e coleta metadados
-4. Gera **relatório técnico profissional** com IA (Gemini Flash Lite)
-5. Calcula **score de severidade** (0–100)
-6. Publica comentário no **VirusTotal**
-7. Salva no **Supabase** com Realtime
-8. Notifica no **Discord** com embed colorido
-9. Aguarda 45 segundos e repete
+3. Tenta obter dados do **VirusTotal**
+4. Se VT esgotado (429), usa **Threat.rip** como fallback
+5. Gera **relatório técnico profissional** com IA (Groq Llama 3.3 70B)
+6. Calcula **score de severidade** (0–100)
+7. Publica comentário no **VirusTotal**
+8. Salva no **Supabase** com Realtime
+9. Notifica no **Discord** com embed colorido
+10. Aguarda cooldown e repete
+
+### Rodar o Hunter
+
+**Desenvolvimento:**
+```bash
+cd servidor
+python hunter.py
+```
+
+**Produção (Railway):**
+1. Conecta o repositório no Railway
+2. Root Directory: `servidor`
+3. Adiciona variáveis do `.env` no painel
+4. Deploy automático via GitHub push
 
 ### Formato do Relatório
 
@@ -184,7 +182,7 @@ Analyst: Mozart_Dev (Analyst ID: 4821)
 Security Level: Critical 🔴
 
 ## 1. Executive Summary
-## 2. File Metadata      ← tabela com dados reais do VT
+## 2. File Metadata      ← tabela com dados reais do VT/Threat.rip
 ## 3. Detection Metrics  ← X / Y engines
 ## 4. Behavioral Analysis
 ## 5. MITRE ATT&CK Matrix
@@ -258,12 +256,13 @@ ALTER TABLE reports ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 50;
 | Serviço | Uso |
 |---------|-----|
 | [MalwareBazaar](https://bazaar.abuse.ch) | Feed de hashes de malware |
-| [threat.rip](https://www.threat.rip/) | Se o virustotal não estiver disponivel |
 | [VirusTotal](https://virustotal.com) | Metadados e publicação de análises |
-| [OpenRouter](https://openrouter.ai) | IA para geração de relatórios (Gemini Flash Lite) |
+| [Threat.rip](https://threat.rip) | Fallback quando VT esgota |
+| [Groq](https://groq.com) | IA para geração de relatórios (Llama 3.3 70B) |
 | [Supabase](https://supabase.com) | Banco de dados com Realtime |
 | [Discord](https://discord.com) | Notificações via Webhook |
 | [Vercel](https://vercel.com) | Hospedagem do dashboard |
+| [Railway](https://railway.app) | Hospedagem do hunter 24/7 |
 
 ---
 
@@ -281,6 +280,7 @@ cp .env.example .env
 # editar .env com suas chaves
 
 # Rodar o hunter
+cd servidor
 python hunter.py
 
 # Rodar a CLI localmente
@@ -299,6 +299,25 @@ cd cli
 rm -rf dist/
 python -m build
 twine upload dist/*
+```
+
+---
+
+## 🚀 Deploy do Hunter (Railway)
+
+```bash
+# Arquivos necessários na pasta servidor/:
+# - hunter.py
+# - requirements.txt
+# - Procfile
+# - nixpacks.toml
+
+# Push para o GitHub
+git add .
+git commit -m "update hunter"
+git push
+
+# Railway faz deploy automático
 ```
 
 ---
